@@ -8,7 +8,13 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('roles', function (Blueprint $table) {
+        $createIfMissing = function (string $table, \Closure $callback): void {
+            if (! Schema::hasTable($table)) {
+                Schema::create($table, $callback);
+            }
+        };
+
+        $createIfMissing('roles', function (Blueprint $table) {
             $table->id();
             $table->string('name', 255);
             $table->string('guard_name', 255);
@@ -16,7 +22,7 @@ return new class extends Migration
             $table->timestamp('updated_at')->nullable();
         });
 
-        Schema::create('permissions', function (Blueprint $table) {
+        $createIfMissing('permissions', function (Blueprint $table) {
             $table->id();
             $table->string('name', 255);
             $table->string('guard_name', 255);
@@ -24,7 +30,7 @@ return new class extends Migration
             $table->timestamp('updated_at')->nullable();
         });
 
-        Schema::create('model_has_roles', function (Blueprint $table) {
+        $createIfMissing('model_has_roles', function (Blueprint $table) {
             $table->foreignId('role_id');
             $table->string('model_type', 255);
             $table->foreignId('model_id');
@@ -32,7 +38,7 @@ return new class extends Migration
             $table->foreign('role_id')->references('id')->on('roles')->cascadeOnDelete();
         });
 
-        Schema::create('model_has_permissions', function (Blueprint $table) {
+        $createIfMissing('model_has_permissions', function (Blueprint $table) {
             $table->foreignId('permission_id');
             $table->string('model_type', 255);
             $table->foreignId('model_id');
@@ -40,7 +46,7 @@ return new class extends Migration
             $table->foreign('permission_id')->references('id')->on('permissions')->cascadeOnDelete();
         });
 
-        Schema::create('series', function (Blueprint $table) {
+        $createIfMissing('series', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id');
             $table->string('title', 255);
@@ -50,37 +56,39 @@ return new class extends Migration
             $table->foreign('user_id')->references('id')->on('users')->cascadeOnDelete();
         });
 
-        Schema::create('works', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('user_id');
-            $table->foreignId('series_id')->nullable();
-            $table->integer('series_number')->nullable();
-            $table->string('title_internal', 255);
-            $table->string('title_public', 255);
-            $table->string('subtitle', 255)->nullable();
-            $table->string('author_name', 255);
-            $table->string('pen_name', 255)->nullable();
-            $table->string('genre', 100)->nullable();
-            $table->string('subgenre', 100)->nullable();
-            $table->string('work_type', 100)->nullable();
-            $table->char('original_language', 2);
-            $table->string('status', 50);
-            $table->string('target_audience', 255)->nullable();
-            $table->string('age_recommendation', 50)->nullable();
-            $table->text('description_internal')->nullable();
-            $table->text('description_marketing')->nullable();
-            $table->date('start_date')->nullable();
-            $table->date('planned_publish_date')->nullable();
-            $table->text('notes')->nullable();
-            $table->timestamp('created_at')->nullable();
-            $table->timestamp('updated_at')->nullable();
-            $table->index(['works_user_id_index', 'user_id']);
-            $table->index(['works_series_id_index', 'series_id']);
-            $table->foreign('user_id')->references('id')->on('users')->cascadeOnDelete();
-            $table->foreign('series_id')->references('id')->on('series')->nullOnDelete();
-        });
+        if (! Schema::hasTable('works')) {
+            $createIfMissing('works', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('user_id');
+                $table->foreignId('series_id')->nullable();
+                $table->integer('series_number')->nullable();
+                $table->string('title_internal', 255);
+                $table->string('title_public', 255);
+                $table->string('subtitle', 255)->nullable();
+                $table->string('author_name', 255);
+                $table->string('pen_name', 255)->nullable();
+                $table->string('genre', 100)->nullable();
+                $table->string('subgenre', 100)->nullable();
+                $table->string('work_type', 100)->nullable();
+                $table->char('original_language', 2);
+                $table->string('status', 50);
+                $table->string('target_audience', 255)->nullable();
+                $table->string('age_recommendation', 50)->nullable();
+                $table->text('description_internal')->nullable();
+                $table->text('description_marketing')->nullable();
+                $table->date('start_date')->nullable();
+                $table->date('planned_publish_date')->nullable();
+                $table->text('notes')->nullable();
+                $table->timestamp('created_at')->nullable();
+                $table->timestamp('updated_at')->nullable();
+                $table->index(['works_user_id_index', 'user_id']);
+                $table->index(['works_series_id_index', 'series_id']);
+                $table->foreign('user_id')->references('id')->on('users')->cascadeOnDelete();
+                $table->foreign('series_id')->references('id')->on('series')->nullOnDelete();
+            });
+        }
 
-        Schema::create('work_languages', function (Blueprint $table) {
+        $createIfMissing('work_languages', function (Blueprint $table) {
             $table->id();
             $table->foreignId('work_id');
             $table->char('language_code', 2);
@@ -98,7 +106,7 @@ return new class extends Migration
             $table->foreign('work_id')->references('id')->on('works')->cascadeOnDelete();
         });
 
-        Schema::create('editions', function (Blueprint $table) {
+        $createIfMissing('editions', function (Blueprint $table) {
             $table->id();
             $table->foreignId('work_id');
             $table->foreignId('work_language_id');
@@ -112,7 +120,7 @@ return new class extends Migration
             $table->foreign('work_language_id')->references('id')->on('work_languages')->cascadeOnDelete();
         });
 
-        Schema::create('manuscript_versions', function (Blueprint $table) {
+        $createIfMissing('manuscript_versions', function (Blueprint $table) {
             $table->id();
             $table->foreignId('work_id');
             $table->foreignId('work_language_id');
@@ -144,7 +152,7 @@ return new class extends Migration
             $table->foreign('created_by')->references('id')->on('users')->cascadeOnDelete();
         });
 
-        Schema::create('chapters', function (Blueprint $table) {
+        $createIfMissing('chapters', function (Blueprint $table) {
             $table->id();
             $table->foreignId('manuscript_version_id');
             $table->foreignId('work_id');
@@ -165,7 +173,7 @@ return new class extends Migration
             $table->foreign('work_id')->references('id')->on('works')->cascadeOnDelete();
         });
 
-        Schema::create('sources', function (Blueprint $table) {
+        $createIfMissing('sources', function (Blueprint $table) {
             $table->id();
             $table->foreignId('work_id');
             $table->string('title', 512);
@@ -188,7 +196,7 @@ return new class extends Migration
             $table->foreign('work_id')->references('id')->on('works')->cascadeOnDelete();
         });
 
-        Schema::create('source_usages', function (Blueprint $table) {
+        $createIfMissing('source_usages', function (Blueprint $table) {
             $table->id();
             $table->foreignId('source_id');
             $table->foreignId('work_id');
@@ -206,7 +214,7 @@ return new class extends Migration
             $table->foreign('chapter_id')->references('id')->on('chapters')->nullOnDelete();
         });
 
-        Schema::create('ai_tools', function (Blueprint $table) {
+        $createIfMissing('ai_tools', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id');
             $table->string('name', 255);
@@ -224,7 +232,7 @@ return new class extends Migration
             $table->foreign('user_id')->references('id')->on('users')->cascadeOnDelete();
         });
 
-        Schema::create('ai_tasks', function (Blueprint $table) {
+        $createIfMissing('ai_tasks', function (Blueprint $table) {
             $table->id();
             $table->foreignId('work_id');
             $table->string('task_type', 100);
@@ -236,7 +244,7 @@ return new class extends Migration
             $table->foreign('preferred_ai_tool_id')->references('id')->on('ai_tools')->nullOnDelete();
         });
 
-        Schema::create('prompts', function (Blueprint $table) {
+        $createIfMissing('prompts', function (Blueprint $table) {
             $table->id();
             $table->foreignId('work_id');
             $table->foreignId('ai_tool_id')->nullable();
@@ -257,7 +265,7 @@ return new class extends Migration
             $table->foreign('task_id')->references('id')->on('ai_tasks')->nullOnDelete();
         });
 
-        Schema::create('illustrations', function (Blueprint $table) {
+        $createIfMissing('illustrations', function (Blueprint $table) {
             $table->id();
             $table->foreignId('work_id');
             $table->foreignId('work_language_id')->nullable();
@@ -285,7 +293,7 @@ return new class extends Migration
             $table->foreign('prompt_id')->references('id')->on('prompts')->nullOnDelete();
         });
 
-        Schema::create('illustration_versions', function (Blueprint $table) {
+        $createIfMissing('illustration_versions', function (Blueprint $table) {
             $table->id();
             $table->foreignId('illustration_id');
             $table->integer('version_number');
@@ -298,7 +306,7 @@ return new class extends Migration
             $table->foreign('created_by')->references('id')->on('users')->cascadeOnDelete();
         });
 
-        Schema::create('illustration_anchors', function (Blueprint $table) {
+        $createIfMissing('illustration_anchors', function (Blueprint $table) {
             $table->id();
             $table->foreignId('illustration_id');
             $table->foreignId('manuscript_version_id');
@@ -321,7 +329,7 @@ return new class extends Migration
             $table->foreign('chapter_id')->references('id')->on('chapters')->nullOnDelete();
         });
 
-        Schema::create('platforms', function (Blueprint $table) {
+        $createIfMissing('platforms', function (Blueprint $table) {
             $table->id();
             $table->string('name', 255);
             $table->text('description')->nullable();
@@ -329,7 +337,7 @@ return new class extends Migration
             $table->timestamp('updated_at')->nullable();
         });
 
-        Schema::create('marketplaces', function (Blueprint $table) {
+        $createIfMissing('marketplaces', function (Blueprint $table) {
             $table->id();
             $table->foreignId('platform_id');
             $table->string('code', 50);
@@ -340,7 +348,7 @@ return new class extends Migration
             $table->foreign('platform_id')->references('id')->on('platforms')->cascadeOnDelete();
         });
 
-        Schema::create('publications', function (Blueprint $table) {
+        $createIfMissing('publications', function (Blueprint $table) {
             $table->id();
             $table->foreignId('work_id');
             $table->foreignId('work_language_id');
@@ -368,7 +376,7 @@ return new class extends Migration
             $table->foreign('marketplace_id')->references('id')->on('marketplaces')->nullOnDelete();
         });
 
-        Schema::create('kdp_metadata', function (Blueprint $table) {
+        $createIfMissing('kdp_metadata', function (Blueprint $table) {
             $table->id();
             $table->foreignId('publication_id');
             $table->string('title', 255);
@@ -388,7 +396,7 @@ return new class extends Migration
             $table->foreign('publication_id')->references('id')->on('publications')->cascadeOnDelete();
         });
 
-        Schema::create('kdp_select_periods', function (Blueprint $table) {
+        $createIfMissing('kdp_select_periods', function (Blueprint $table) {
             $table->id();
             $table->foreignId('publication_id');
             $table->date('start_date');
@@ -404,7 +412,7 @@ return new class extends Migration
             $table->foreign('publication_id')->references('id')->on('publications')->cascadeOnDelete();
         });
 
-        Schema::create('book_promotions', function (Blueprint $table) {
+        $createIfMissing('book_promotions', function (Blueprint $table) {
             $table->id();
             $table->foreignId('publication_id');
             $table->foreignId('marketplace_id')->nullable();
@@ -425,7 +433,7 @@ return new class extends Migration
             $table->foreign('kdp_select_period_id')->references('id')->on('kdp_select_periods')->nullOnDelete();
         });
 
-        Schema::create('promotion_daily_results', function (Blueprint $table) {
+        $createIfMissing('promotion_daily_results', function (Blueprint $table) {
             $table->id();
             $table->foreignId('book_promotion_id');
             $table->date('date');
@@ -443,7 +451,7 @@ return new class extends Migration
             $table->foreign('book_promotion_id')->references('id')->on('book_promotions')->cascadeOnDelete();
         });
 
-        Schema::create('promotion_costs', function (Blueprint $table) {
+        $createIfMissing('promotion_costs', function (Blueprint $table) {
             $table->id();
             $table->foreignId('book_promotion_id');
             $table->string('cost_type', 100);
@@ -457,7 +465,7 @@ return new class extends Migration
             $table->foreign('book_promotion_id')->references('id')->on('book_promotions')->cascadeOnDelete();
         });
 
-        Schema::create('royalty_entries', function (Blueprint $table) {
+        $createIfMissing('royalty_entries', function (Blueprint $table) {
             $table->id();
             $table->foreignId('publication_id');
             $table->integer('year');
@@ -479,7 +487,7 @@ return new class extends Migration
             $table->foreign('publication_id')->references('id')->on('publications')->cascadeOnDelete();
         });
 
-        Schema::create('royalty_payments', function (Blueprint $table) {
+        $createIfMissing('royalty_payments', function (Blueprint $table) {
             $table->id();
             $table->foreignId('platform_id');
             $table->foreignId('marketplace_id')->nullable();
@@ -500,7 +508,7 @@ return new class extends Migration
             $table->foreign('marketplace_id')->references('id')->on('marketplaces')->nullOnDelete();
         });
 
-        Schema::create('payment_thresholds', function (Blueprint $table) {
+        $createIfMissing('payment_thresholds', function (Blueprint $table) {
             $table->id();
             $table->foreignId('platform_id');
             $table->foreignId('marketplace_id')->nullable();
@@ -512,7 +520,7 @@ return new class extends Migration
             $table->foreign('marketplace_id')->references('id')->on('marketplaces')->nullOnDelete();
         });
 
-        Schema::create('awards', function (Blueprint $table) {
+        $createIfMissing('awards', function (Blueprint $table) {
             $table->id();
             $table->string('name', 255);
             $table->string('organizer', 255)->nullable();
@@ -538,7 +546,7 @@ return new class extends Migration
             $table->timestamp('updated_at')->nullable();
         });
 
-        Schema::create('award_submissions', function (Blueprint $table) {
+        $createIfMissing('award_submissions', function (Blueprint $table) {
             $table->id();
             $table->foreignId('work_id');
             $table->foreignId('work_language_id');
@@ -562,7 +570,7 @@ return new class extends Migration
             $table->foreign('award_id')->references('id')->on('awards')->cascadeOnDelete();
         });
 
-        Schema::create('book_events', function (Blueprint $table) {
+        $createIfMissing('book_events', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id');
             $table->string('title', 255);
@@ -588,7 +596,7 @@ return new class extends Migration
             $table->foreign('user_id')->references('id')->on('users')->cascadeOnDelete();
         });
 
-        Schema::create('event_books', function (Blueprint $table) {
+        $createIfMissing('event_books', function (Blueprint $table) {
             $table->id();
             $table->foreignId('event_id');
             $table->foreignId('work_id');
@@ -609,7 +617,7 @@ return new class extends Migration
             $table->foreign('work_language_id')->references('id')->on('work_languages')->nullOnDelete();
         });
 
-        Schema::create('physical_print_runs', function (Blueprint $table) {
+        $createIfMissing('physical_print_runs', function (Blueprint $table) {
             $table->id();
             $table->foreignId('work_id');
             $table->foreignId('edition_id')->nullable();
@@ -629,7 +637,7 @@ return new class extends Migration
             $table->foreign('work_language_id')->references('id')->on('work_languages')->cascadeOnDelete();
         });
 
-        Schema::create('distribution_points', function (Blueprint $table) {
+        $createIfMissing('distribution_points', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id');
             $table->string('name', 255);
@@ -655,7 +663,7 @@ return new class extends Migration
             $table->foreign('user_id')->references('id')->on('users')->cascadeOnDelete();
         });
 
-        Schema::create('stock_locations', function (Blueprint $table) {
+        $createIfMissing('stock_locations', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id');
             $table->string('name', 255);
@@ -668,7 +676,7 @@ return new class extends Migration
             $table->foreign('distribution_point_id')->references('id')->on('distribution_points')->nullOnDelete();
         });
 
-        Schema::create('stock_movements', function (Blueprint $table) {
+        $createIfMissing('stock_movements', function (Blueprint $table) {
             $table->id();
             $table->foreignId('work_id');
             $table->foreignId('edition_id')->nullable();
@@ -692,7 +700,7 @@ return new class extends Migration
             $table->foreign('to_location_id')->references('id')->on('stock_locations')->nullOnDelete();
         });
 
-        Schema::create('book_deliveries', function (Blueprint $table) {
+        $createIfMissing('book_deliveries', function (Blueprint $table) {
             $table->id();
             $table->foreignId('work_id');
             $table->foreignId('edition_id')->nullable();
@@ -717,7 +725,7 @@ return new class extends Migration
             $table->foreign('distribution_point_id')->references('id')->on('distribution_points')->cascadeOnDelete();
         });
 
-        Schema::create('distribution_visits', function (Blueprint $table) {
+        $createIfMissing('distribution_visits', function (Blueprint $table) {
             $table->id();
             $table->foreignId('distribution_point_id');
             $table->date('visit_date');
@@ -729,7 +737,7 @@ return new class extends Migration
             $table->foreign('distribution_point_id')->references('id')->on('distribution_points')->cascadeOnDelete();
         });
 
-        Schema::create('delivery_reviews', function (Blueprint $table) {
+        $createIfMissing('delivery_reviews', function (Blueprint $table) {
             $table->id();
             $table->foreignId('book_delivery_id');
             $table->foreignId('distribution_visit_id');
@@ -750,7 +758,7 @@ return new class extends Migration
             $table->foreign('distribution_visit_id')->references('id')->on('distribution_visits')->cascadeOnDelete();
         });
 
-        Schema::create('promotional_assets', function (Blueprint $table) {
+        $createIfMissing('promotional_assets', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id');
             $table->foreignId('work_id');
@@ -785,7 +793,7 @@ return new class extends Migration
             $table->foreign('prompt_id')->references('id')->on('prompts')->nullOnDelete();
         });
 
-        Schema::create('asset_versions', function (Blueprint $table) {
+        $createIfMissing('asset_versions', function (Blueprint $table) {
             $table->id();
             $table->foreignId('promotional_asset_id');
             $table->integer('version_number');
@@ -798,7 +806,7 @@ return new class extends Migration
             $table->foreign('created_by')->references('id')->on('users')->cascadeOnDelete();
         });
 
-        Schema::create('aplus_projects', function (Blueprint $table) {
+        $createIfMissing('aplus_projects', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id');
             $table->foreignId('work_id');
@@ -827,7 +835,7 @@ return new class extends Migration
             $table->foreign('marketplace_id')->references('id')->on('marketplaces')->cascadeOnDelete();
         });
 
-        Schema::create('aplus_modules', function (Blueprint $table) {
+        $createIfMissing('aplus_modules', function (Blueprint $table) {
             $table->id();
             $table->foreignId('aplus_project_id');
             $table->string('module_type', 100);
@@ -847,7 +855,7 @@ return new class extends Migration
             $table->foreign('secondary_image_asset_id')->references('id')->on('promotional_assets')->nullOnDelete();
         });
 
-        Schema::create('import_batches', function (Blueprint $table) {
+        $createIfMissing('import_batches', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id');
             $table->string('import_type', 100);
@@ -869,7 +877,7 @@ return new class extends Migration
             $table->foreign('ai_tool_id')->references('id')->on('ai_tools')->nullOnDelete();
         });
 
-        Schema::create('import_mappings', function (Blueprint $table) {
+        $createIfMissing('import_mappings', function (Blueprint $table) {
             $table->id();
             $table->foreignId('import_batch_id');
             $table->string('external_column_name', 255);
@@ -884,7 +892,7 @@ return new class extends Migration
             $table->foreign('import_batch_id')->references('id')->on('import_batches')->cascadeOnDelete();
         });
 
-        Schema::create('import_rows', function (Blueprint $table) {
+        $createIfMissing('import_rows', function (Blueprint $table) {
             $table->id();
             $table->foreignId('import_batch_id');
             $table->integer('row_number');
@@ -903,7 +911,7 @@ return new class extends Migration
             $table->foreign('linked_royalty_entry_id')->references('id')->on('royalty_entries')->nullOnDelete();
         });
 
-        Schema::create('import_errors', function (Blueprint $table) {
+        $createIfMissing('import_errors', function (Blueprint $table) {
             $table->id();
             $table->foreignId('import_batch_id');
             $table->string('severity', 50);
@@ -918,7 +926,7 @@ return new class extends Migration
             $table->foreign('import_batch_id')->references('id')->on('import_batches')->cascadeOnDelete();
         });
 
-        Schema::create('calibre_imports', function (Blueprint $table) {
+        $createIfMissing('calibre_imports', function (Blueprint $table) {
             $table->id();
             $table->foreignId('import_batch_id');
             $table->string('calibre_book_id', 255)->nullable();
@@ -939,7 +947,7 @@ return new class extends Migration
             $table->foreign('matched_work_id')->references('id')->on('works')->nullOnDelete();
         });
 
-        Schema::create('ocr_jobs', function (Blueprint $table) {
+        $createIfMissing('ocr_jobs', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id');
             $table->foreignId('source_id')->nullable();
@@ -963,7 +971,7 @@ return new class extends Migration
             $table->foreign('import_batch_id')->references('id')->on('import_batches')->nullOnDelete();
         });
 
-        Schema::create('ocr_text_versions', function (Blueprint $table) {
+        $createIfMissing('ocr_text_versions', function (Blueprint $table) {
             $table->id();
             $table->foreignId('ocr_job_id');
             $table->string('version_type', 50);
@@ -981,7 +989,7 @@ return new class extends Migration
             $table->foreign('reviewed_by')->references('id')->on('users')->nullOnDelete();
         });
 
-        Schema::create('translation_jobs', function (Blueprint $table) {
+        $createIfMissing('translation_jobs', function (Blueprint $table) {
             $table->id();
             $table->foreignId('work_id');
             $table->foreignId('source_work_language_id');
@@ -1007,7 +1015,7 @@ return new class extends Migration
             $table->foreign('ai_tool_id')->references('id')->on('ai_tools')->nullOnDelete();
         });
 
-        Schema::create('tasks', function (Blueprint $table) {
+        $createIfMissing('tasks', function (Blueprint $table) {
             $table->id();
             $table->foreignId('work_id');
             $table->unsignedBigInteger('assigned_to')->nullable();
@@ -1026,7 +1034,7 @@ return new class extends Migration
             $table->foreign('created_by')->references('id')->on('users')->cascadeOnDelete();
         });
 
-        Schema::create('comments', function (Blueprint $table) {
+        $createIfMissing('comments', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id');
             $table->foreignId('work_id')->nullable();
@@ -1043,7 +1051,7 @@ return new class extends Migration
             $table->foreign('task_id')->references('id')->on('tasks')->cascadeOnDelete();
         });
 
-        Schema::create('checklists', function (Blueprint $table) {
+        $createIfMissing('checklists', function (Blueprint $table) {
             $table->id();
             $table->foreignId('work_id');
             $table->string('name', 255);
@@ -1053,7 +1061,7 @@ return new class extends Migration
             $table->foreign('work_id')->references('id')->on('works')->cascadeOnDelete();
         });
 
-        Schema::create('checklist_items', function (Blueprint $table) {
+        $createIfMissing('checklist_items', function (Blueprint $table) {
             $table->id();
             $table->foreignId('checklist_id');
             $table->string('item', 255);
@@ -1067,7 +1075,7 @@ return new class extends Migration
             $table->foreign('checked_by')->references('id')->on('users')->nullOnDelete();
         });
 
-        Schema::create('tags', function (Blueprint $table) {
+        $createIfMissing('tags', function (Blueprint $table) {
             $table->id();
             $table->string('name', 255);
             $table->timestamp('created_at')->nullable();
@@ -1075,7 +1083,7 @@ return new class extends Migration
             $table->unique(['tags_name_unique', 'name']);
         });
 
-        Schema::create('taggables', function (Blueprint $table) {
+        $createIfMissing('taggables', function (Blueprint $table) {
             $table->foreignId('tag_id');
             $table->string('taggable_type', 255);
             $table->foreignId('taggable_id');
@@ -1083,7 +1091,7 @@ return new class extends Migration
             $table->foreign('tag_id')->references('id')->on('tags')->cascadeOnDelete();
         });
 
-        Schema::create('activity_logs', function (Blueprint $table) {
+        $createIfMissing('activity_logs', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->nullable();
             $table->string('action', 255);
