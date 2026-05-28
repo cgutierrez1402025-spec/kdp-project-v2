@@ -25,6 +25,14 @@ class WorksTable
                     ->searchable()
                     ->sortable(),
 
+                TextColumn::make('series.title')
+                    ->label('Serie')
+                    ->sortable(),
+
+                TextColumn::make('series_number')
+                    ->label('Número en Serie')
+                    ->sortable(),
+
                 TextColumn::make('genre')
                     ->label('Género')
                     ->badge(),

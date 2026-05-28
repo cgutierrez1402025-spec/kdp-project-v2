@@ -2,6 +2,7 @@
 
 namespace App\Filament\Admin\Resources\Works\Schemas;
 
+use App\Models\Series;
 use Filament\Forms;
 use Filament\Schemas\Schema;
 
@@ -13,6 +14,21 @@ class WorkForm
             ->components([
                 Forms\Components\Section::make('Información Básica')
                     ->schema([
+                        Forms\Components\BelongsToSelect::make('user_id')
+                            ->relationship('user', 'name')
+                            ->label('Usuario')
+                            ->required(),
+
+                        Forms\Components\BelongsToSelect::make('series_id')
+                            ->relationship('series', 'title')
+                            ->label('Serie')
+                            ->nullable(),
+
+                        Forms\Components\TextInput::make('series_number')
+                            ->label('Número en Serie')
+                            ->numeric()
+                            ->nullable(),
+
                         Forms\Components\TextInput::make('title_internal')
                             ->label('Título Interno')
                             ->required()
@@ -56,7 +72,8 @@ class WorkForm
 
                         Forms\Components\TextInput::make('original_language')
                             ->label('Idioma Original')
-                            ->maxLength(10),
+                            ->maxLength(2)
+                            ->required(),
 
                         Forms\Components\Select::make('status')
                             ->label('Estado')
@@ -97,7 +114,7 @@ class WorkForm
 
                         Forms\Components\TextInput::make('target_audience')
                             ->label('Público Objetivo')
-                            ->maxLength(100),
+                            ->maxLength(255),
 
                         Forms\Components\TextInput::make('age_recommendation')
                             ->label('Recomendación de Edad')

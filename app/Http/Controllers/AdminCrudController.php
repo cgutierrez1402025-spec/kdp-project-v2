@@ -11,8 +11,7 @@ class AdminCrudController extends Controller
 {
     public function dashboard()
     {
-        $tables = collect(DB::select('SHOW TABLES'))
-            ->map(fn ($row) => array_values((array) $row)[0])
+        $tables = collect($this->getTables())
             ->filter(fn (string $table) => $table !== 'migrations')
             ->sort()
             ->values();
@@ -78,6 +77,11 @@ class AdminCrudController extends Controller
     {
         $this->ensureTableExists($table);
         $columns = $this->getColumns($table);
+        
+        // Validar datos antes de guardar
+        $rules = $this->buildValidationRules($table, $columns);
+        $validated = $request->validate($rules);
+        
         $data = $this->normalizeRequestData($request, $columns);
 
         $id = DB::table($table)->insertGetId($data);
@@ -109,6 +113,10 @@ class AdminCrudController extends Controller
         $this->ensureTableExists($table);
         $columns = $this->getColumns($table);
         $primary = $this->decodeKey($key);
+        
+        // Validar datos antes de actualizar
+        $rules = $this->buildValidationRules($table, $columns);
+        $validated = $request->validate($rules);
 
         $data = $this->normalizeRequestData($request, $columns);
         DB::table($table)->where($primary)->update($data);
@@ -133,13 +141,44 @@ class AdminCrudController extends Controller
         abort_if(!Schema::hasTable($table), 404, "Tabla {$table} no encontrada.");
     }
 
+    protected function getTables(): array
+    {
+        if (DB::getDriverName() === 'sqlite') {
+            return collect(DB::select("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"))
+                ->map(fn ($row) => $row->name)
+                ->all();
+        }
+
+        return collect(DB::select('SHOW TABLES'))
+            ->map(fn ($row) => array_values((array) $row)[0])
+            ->all();
+    }
+
     protected function getColumns(string $table): array
     {
+        if (DB::getDriverName() === 'sqlite') {
+            return collect(DB::select("PRAGMA table_info('{$table}')"))
+                ->map(fn ($column) => (object) [
+                    'Field' => $column->name,
+                    'Type' => $column->type,
+                    'Null' => $column->notnull === 0 ? 'YES' : 'NO',
+                    'Key' => $column->pk ? 'PRI' : '',
+                    'Column_name' => $column->name,
+                ])
+                ->all();
+        }
+
         return DB::select("SHOW FULL COLUMNS FROM `{$table}`");
     }
 
     protected function getPrimaryKey(string $table): array
     {
+        if (DB::getDriverName() === 'sqlite') {
+            $columns = collect(DB::select("PRAGMA table_info('{$table}')"));
+            $keys = $columns->filter(fn ($column) => $column->pk > 0)->pluck('name')->all();
+            return !empty($keys) ? $keys : ['id'];
+        }
+
         $keys = DB::select("SHOW KEYS FROM `{$table}` WHERE Key_name = 'PRIMARY'");
         if (empty($keys)) {
             return ['id'];
@@ -186,6 +225,81 @@ class AdminCrudController extends Controller
     protected function getFilterableColumns(array $columns): array
     {
         return array_values(array_filter($columns, fn ($column) => $this->isSearchableColumn($column) && !in_array($column->Field, ['created_at', 'updated_at', 'deleted_at'], true)));
+    }
+
+    /**
+     * Construir reglas de validación basadas en la estructura de la tabla
+     * 
+     * @param string $table Nombre de la tabla
+     * @param array $columns Columnas obtenidas de getColumns()
+     * @return array Reglas de validación para Laravel
+     */
+    protected function buildValidationRules(string $table, array $columns): array
+    {
+        $rules = [];
+        $excludeFields = ['id', 'created_at', 'updated_at', 'deleted_at'];
+        $primaryKeys = $this->getPrimaryKey($table);
+        
+        foreach ($columns as $column) {
+            // Excluir campos de sistema y claves primarias
+            if (in_array($column->Field, $excludeFields, true) || in_array($column->Field, $primaryKeys, true)) {
+                continue;
+            }
+
+            $fieldRules = [];
+            $type = Str::lower($column->Type);
+
+            // Regla de requerimiento
+            if ($column->Null === 'NO') {
+                $fieldRules[] = 'required';
+            } else {
+                $fieldRules[] = 'nullable';
+            }
+
+            // Reglas específicas por tipo de dato
+            if ($this->isBooleanColumn($column)) {
+                $fieldRules[] = 'boolean';
+            } elseif (Str::contains($type, ['json'])) {
+                $fieldRules[] = 'json';
+            } elseif (Str::contains($type, ['longtext', 'mediumtext', 'text'])) {
+                $fieldRules[] = 'string';
+            } elseif (Str::contains($type, 'varchar')) {
+                // Extraer longitud de varchar(n)
+                if (preg_match('/varchar\((\d+)\)/', $column->Type, $matches)) {
+                    $length = (int) $matches[1];
+                    $fieldRules[] = "string|max:{$length}";
+                } else {
+                    $fieldRules[] = 'string';
+                }
+            } elseif (Str::contains($type, 'char')) {
+                // Extraer longitud de char(n)
+                if (preg_match('/char\((\d+)\)/', $column->Type, $matches)) {
+                    $length = (int) $matches[1];
+                    $fieldRules[] = "string|max:{$length}";
+                } else {
+                    $fieldRules[] = 'string';
+                }
+            } elseif (Str::contains($type, ['decimal', 'float', 'double', 'real'])) {
+                $fieldRules[] = 'numeric';
+            } elseif (Str::contains($type, ['bigint', 'int', 'integer', 'mediumint', 'smallint', 'tinyint'])) {
+                // Excluir tinyint(1) que son booleanos
+                if (!Str::contains($type, 'tinyint(1)')) {
+                    $fieldRules[] = 'integer';
+                }
+            } elseif (Str::contains($type, 'date')) {
+                // Soporta date, datetime, timestamp
+                $fieldRules[] = 'date';
+            } elseif (Str::contains($type, 'time')) {
+                $fieldRules[] = 'date_format:H:i:s';
+            }
+
+            // Combinar reglas
+            if (!empty($fieldRules)) {
+                $rules[$column->Field] = $fieldRules;
+            }
+        }
+
+        return $rules;
     }
 
     protected function encodeKey(array $primaryKey): string
