@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  laravel:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: laravel-app
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_ENV=production
+      - APP_DEBUG=false
+      - DB_CONNECTION=sqlite
+      - QUEUE_CONNECTION=database
+      - CACHE_STORE=database
+      - SESSION_DRIVER=database
+    volumes:
+      - ./storage:/app/storage
+      - ./bootstrap/cache:/app/bootstrap/cache
+      - database:/app/database
+    depends_on:
+      - db
+    restart: unless-stopped
+    networks:
+      - laravel
+
+  db:
+    image: alpine:latest
+    container_name: laravel-db-init
+    volumes:
+      - database:/app/database
+    entrypoint: sh -c "mkdir -p /app/database && touch /app/database/database.sqlite"
+    networks:
+      - laravel
+
+volumes:
+  database:
+
+networks:
+  laravel:
+    driver: bridge
