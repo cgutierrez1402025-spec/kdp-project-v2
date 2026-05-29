@@ -81,7 +81,7 @@ $sections = [];
 foreach ($categorizedTables as $category => $config) {
     $categorized = [];
     foreach ($config['tables'] as $tableName) {
-        if (in_array($tableName, $tables)) {
+        if (in_array($tableName, $tables->toArray())) {
             $categorized[] = $tableName;
         }
     }
@@ -95,7 +95,7 @@ foreach ($categorizedTables as $category => $config) {
 }
 
 // Tablas que no entraron en categorías
-$uncategorized = array_diff($tables, array_merge(...array_column($sections, 'tables')));
+$uncategorized = array_diff($tables->toArray(), array_merge(...array_column($sections, 'tables')));
 if (!empty($uncategorized)) {
     $sections['Otros'] = [
         'icon' => '📋',
