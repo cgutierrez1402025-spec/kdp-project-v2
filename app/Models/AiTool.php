@@ -6,7 +6,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use OpenAI\Client;
-use Anthropic\Client as AnthropicClient;
 
 class AiTool extends Model
 {
@@ -41,11 +40,19 @@ class AiTool extends Model
         return $this->hasMany(Prompt::class);
     }
 
-    public function getApiClient()
+    public function getApiClient(): ?object
     {
-        return match($this->provider) {
-            'openai' => app(Client::class),
-            'anthropic' => app(AnthropicClient::class),
+        $apiKey = config("services.{$this->provider}.key");
+
+        if (! $apiKey) {
+            return null;
+        }
+
+        return match ($this->provider) {
+            'openai' => new Client($apiKey),
+            'anthropic' => new \Anthropic\Client($apiKey),
+            'google' => new \Google\Client(['api_key' => $apiKey]),
+            'cohere' => new \Cohere\Client($apiKey),
             default => null,
         };
     }
