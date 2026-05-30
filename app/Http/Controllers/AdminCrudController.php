@@ -78,16 +78,19 @@ class AdminCrudController extends Controller
         $this->ensureTableExists($table);
         $columns = $this->getColumns($table);
         
-        // Validar datos antes de guardar
-        $rules = $this->buildValidationRules($table, $columns);
-        $validated = $request->validate($rules);
-        
+        // Minimal validation - only for basic type safety
         $data = $this->normalizeRequestData($request, $columns);
-
-        $id = DB::table($table)->insertGetId($data);
-
-        return redirect()->route('admin.table.edit', ['table' => $table, 'key' => $this->encodeKey(['id' => $id])])
-            ->with('success', "Registro creado en {$table}.");
+        
+        try {
+            $id = DB::table($table)->insertGetId($data);
+            
+            return redirect()->route('admin.table.edit', ['table' => $table, 'key' => $this->encodeKey(['id' => $id])])
+                ->with('success', "Registro creado en {$table}.");
+        } catch (\Exception $e) {
+            return back()
+                ->with('error', "Error al crear registro: " . $e->getMessage())
+                ->withInput();
+        }
     }
 
     public function edit(string $table, string $key)
@@ -114,15 +117,18 @@ class AdminCrudController extends Controller
         $columns = $this->getColumns($table);
         $primary = $this->decodeKey($key);
         
-        // Validar datos antes de actualizar
-        $rules = $this->buildValidationRules($table, $columns);
-        $validated = $request->validate($rules);
-
         $data = $this->normalizeRequestData($request, $columns);
-        DB::table($table)->where($primary)->update($data);
-
-        return redirect()->route('admin.table.edit', ['table' => $table, 'key' => $key])
-            ->with('success', "Registro actualizado en {$table}.");
+        
+        try {
+            DB::table($table)->where($primary)->update($data);
+            
+            return redirect()->route('admin.table.edit', ['table' => $table, 'key' => $key])
+                ->with('success', "Registro actualizado en {$table}.");
+        } catch (\Exception $e) {
+            return back()
+                ->with('error', "Error al actualizar registro: " . $e->getMessage())
+                ->withInput();
+        }
     }
 
     public function destroy(string $table, string $key)
@@ -130,10 +136,15 @@ class AdminCrudController extends Controller
         $this->ensureTableExists($table);
         $primary = $this->decodeKey($key);
 
-        DB::table($table)->where($primary)->delete();
-
-        return redirect()->route('admin.table.index', ['table' => $table])
-            ->with('success', "Registro eliminado en {$table}.");
+        try {
+            DB::table($table)->where($primary)->delete();
+            
+            return redirect()->route('admin.table.index', ['table' => $table])
+                ->with('success', "Registro eliminado de {$table}.");
+        } catch (\Exception $e) {
+            return back()
+                ->with('error', "Error al eliminar registro: " . $e->getMessage());
+        }
     }
 
     protected function ensureTableExists(string $table): void
@@ -191,20 +202,36 @@ class AdminCrudController extends Controller
     {
         $data = [];
         foreach ($columns as $column) {
-            if (in_array($column->Field, ['id', 'created_at', 'updated_at', 'deleted_at'], true)) {
+            // Skip auto-increment and timestamp fields
+            if (in_array($column->Field, ['id', 'created_at', 'updated_at', 'deleted_at'], true) || $column->Key === 'PRI') {
                 continue;
             }
+            
             $value = $request->input($column->Field);
-            if ($value === null) {
+            
+            // Handle empty strings and null values
+            if ($value === '' || $value === null) {
                 if ($column->Null === 'YES') {
                     $data[$column->Field] = null;
                 }
                 continue;
             }
+            
+            // Handle boolean fields
             if ($this->isBooleanColumn($column)) {
                 $data[$column->Field] = $request->has($column->Field) ? 1 : 0;
-            } else {
-                $data[$column->Field] = $value;
+            } 
+            // Handle numeric fields
+            elseif ($this->isNumericColumn($column)) {
+                $data[$column->Field] = is_numeric($value) ? $value : (empty($value) ? null : $value);
+            }
+            // Handle date fields
+            elseif ($this->isDateColumn($column)) {
+                $data[$column->Field] = !empty($value) ? $value : null;
+            }
+            // Default: store as string
+            else {
+                $data[$column->Field] = (string) $value;
             }
         }
 
@@ -213,7 +240,20 @@ class AdminCrudController extends Controller
 
     protected function isBooleanColumn($column): bool
     {
-        return Str::contains(Str::lower($column->Type), 'tinyint(1)') || Str::contains(Str::lower($column->Type), 'boolean');
+        $type = Str::lower($column->Type);
+        return Str::contains($type, ['tinyint(1)', 'boolean', 'bit']);
+    }
+
+    protected function isNumericColumn($column): bool
+    {
+        $type = Str::lower($column->Type);
+        return Str::contains($type, ['int', 'bigint', 'smallint', 'tinyint', 'mediumint', 'decimal', 'float', 'double', 'real', 'numeric']);
+    }
+
+    protected function isDateColumn($column): bool
+    {
+        $type = Str::lower($column->Type);
+        return Str::contains($type, ['date', 'time', 'datetime', 'timestamp']);
     }
 
     protected function isSearchableColumn($column): bool
@@ -225,81 +265,6 @@ class AdminCrudController extends Controller
     protected function getFilterableColumns(array $columns): array
     {
         return array_values(array_filter($columns, fn ($column) => $this->isSearchableColumn($column) && !in_array($column->Field, ['created_at', 'updated_at', 'deleted_at'], true)));
-    }
-
-    /**
-     * Construir reglas de validación basadas en la estructura de la tabla
-     * 
-     * @param string $table Nombre de la tabla
-     * @param array $columns Columnas obtenidas de getColumns()
-     * @return array Reglas de validación para Laravel
-     */
-    protected function buildValidationRules(string $table, array $columns): array
-    {
-        $rules = [];
-        $excludeFields = ['id', 'created_at', 'updated_at', 'deleted_at'];
-        $primaryKeys = $this->getPrimaryKey($table);
-        
-        foreach ($columns as $column) {
-            // Excluir campos de sistema y claves primarias
-            if (in_array($column->Field, $excludeFields, true) || in_array($column->Field, $primaryKeys, true)) {
-                continue;
-            }
-
-            $fieldRules = [];
-            $type = Str::lower($column->Type);
-
-            // Regla de requerimiento
-            if ($column->Null === 'NO') {
-                $fieldRules[] = 'required';
-            } else {
-                $fieldRules[] = 'nullable';
-            }
-
-            // Reglas específicas por tipo de dato
-            if ($this->isBooleanColumn($column)) {
-                $fieldRules[] = 'boolean';
-            } elseif (Str::contains($type, ['json'])) {
-                $fieldRules[] = 'json';
-            } elseif (Str::contains($type, ['longtext', 'mediumtext', 'text'])) {
-                $fieldRules[] = 'string';
-            } elseif (Str::contains($type, 'varchar')) {
-                // Extraer longitud de varchar(n)
-                if (preg_match('/varchar\((\d+)\)/', $column->Type, $matches)) {
-                    $length = (int) $matches[1];
-                    $fieldRules[] = "string|max:{$length}";
-                } else {
-                    $fieldRules[] = 'string';
-                }
-            } elseif (Str::contains($type, 'char')) {
-                // Extraer longitud de char(n)
-                if (preg_match('/char\((\d+)\)/', $column->Type, $matches)) {
-                    $length = (int) $matches[1];
-                    $fieldRules[] = "string|max:{$length}";
-                } else {
-                    $fieldRules[] = 'string';
-                }
-            } elseif (Str::contains($type, ['decimal', 'float', 'double', 'real'])) {
-                $fieldRules[] = 'numeric';
-            } elseif (Str::contains($type, ['bigint', 'int', 'integer', 'mediumint', 'smallint', 'tinyint'])) {
-                // Excluir tinyint(1) que son booleanos
-                if (!Str::contains($type, 'tinyint(1)')) {
-                    $fieldRules[] = 'integer';
-                }
-            } elseif (Str::contains($type, 'date')) {
-                // Soporta date, datetime, timestamp
-                $fieldRules[] = 'date';
-            } elseif (Str::contains($type, 'time')) {
-                $fieldRules[] = 'date_format:H:i:s';
-            }
-
-            // Combinar reglas
-            if (!empty($fieldRules)) {
-                $rules[$column->Field] = $fieldRules;
-            }
-        }
-
-        return $rules;
     }
 
     protected function encodeKey(array $primaryKey): string

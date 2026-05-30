@@ -14,6 +14,7 @@ class WorksTable
     public static function configure(Table $table): Table
     {
         return $table
+            ->modifyQueryQueryUsing(fn ($query) => $query->with(['series', 'user', 'publications']))
             ->columns([
                 TextColumn::make('title_public')
                     ->label('Título Público')

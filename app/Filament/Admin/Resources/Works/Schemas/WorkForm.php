@@ -14,15 +14,30 @@ class WorkForm
             ->components([
                 Forms\Components\Section::make('Información Básica')
                     ->schema([
-                        Forms\Components\BelongsToSelect::make('user_id')
+                        Forms\Components\Select::make('user_id')
                             ->relationship('user', 'name')
                             ->label('Usuario')
                             ->required(),
 
-                        Forms\Components\BelongsToSelect::make('series_id')
+                        Forms\Components\Select::make('series_id')
                             ->relationship('series', 'title')
                             ->label('Serie')
                             ->nullable(),
+
+                        Forms\Components\TextInput::make('title')
+                            ->label('Título')
+                            ->required()
+                            ->minLength(3)
+                            ->maxLength(255),
+
+                        Forms\Components\TextInput::make('slug')
+                            ->label('Slug')
+                            ->minLength(3)
+                            ->maxLength(255),
+
+                        Forms\Components\Textarea::make('description')
+                            ->label('Descripción')
+                            ->rows(4),
 
                         Forms\Components\TextInput::make('series_number')
                             ->label('Número en Serie')

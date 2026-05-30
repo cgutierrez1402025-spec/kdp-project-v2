@@ -4,7 +4,7 @@ Una aplicación Laravel completa para gestionar la autoedición de libros, integ
 
 ## 📋 Requisitos Previos
 
-- PHP ≥ 8.1
+- PHP ≥ 8.2
 - Composer
 - MySQL 8.0 o MariaDB
 - Node.js & npm

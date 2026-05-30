@@ -66,9 +66,6 @@ docker exec kdp-app php artisan migrate:fresh --seed --force
 # 8. Crear enlace simbólico
 docker exec kdp-app php artisan storage:link
 
-# 9. Crear usuario admin
-docker exec -it kdp-app php artisan make:filament-user
-
 # Acceder a http://localhost:8000/admin
 ```
 

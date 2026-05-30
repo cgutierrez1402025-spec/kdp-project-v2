@@ -2,7 +2,7 @@
 
 ## ✅ FASE 0: Preparación del Entorno
 
-- [ ] Requisitos verificados (PHP 8.1+, Composer, MySQL, Node.js)
+- [ ] Requisitos verificados (PHP 8.2+, Composer, MySQL, Node.js)
 - [ ] Proyecto Laravel creado
 - [ ] Archivo .env configurado
 - [ ] Base de datos creada
@@ -281,4 +281,3 @@
 **Creado**: 2025  
 **Versión**: 1.0  
 **Estado**: En Desarrollo
-
