@@ -81,8 +81,8 @@ return new class extends Migration
                 $table->text('notes')->nullable();
                 $table->timestamp('created_at')->nullable();
                 $table->timestamp('updated_at')->nullable();
-                $table->index(['works_user_id_index', 'user_id']);
-                $table->index(['works_series_id_index', 'series_id']);
+                $table->index('user_id', 'works_user_id_index');
+                $table->index('series_id', 'works_series_id_index');
                 $table->foreign('user_id')->references('id')->on('users')->cascadeOnDelete();
                 $table->foreign('series_id')->references('id')->on('series')->nullOnDelete();
             });
@@ -102,7 +102,7 @@ return new class extends Migration
             $table->text('notes')->nullable();
             $table->timestamp('created_at')->nullable();
             $table->timestamp('updated_at')->nullable();
-            $table->unique(['work_language_unique', 'work_id', 'language_code']);
+            $table->unique(['work_id', 'language_code'], 'work_language_unique');
             $table->foreign('work_id')->references('id')->on('works')->cascadeOnDelete();
         });
 
@@ -143,8 +143,8 @@ return new class extends Migration
             $table->unsignedBigInteger('created_by');
             $table->timestamp('created_at')->nullable();
             $table->timestamp('updated_at')->nullable();
-            $table->index(['manuscript_versions_work_id_index', 'work_id']);
-            $table->index(['manuscript_versions_parent_version_id_index', 'parent_version_id']);
+            $table->index('work_id', 'manuscript_versions_work_id_index');
+            $table->index('parent_version_id', 'manuscript_versions_parent_version_id_index');
             $table->foreign('work_id')->references('id')->on('works')->cascadeOnDelete();
             $table->foreign('work_language_id')->references('id')->on('work_languages')->cascadeOnDelete();
             $table->foreign('parent_version_id')->references('id')->on('manuscript_versions')->nullOnDelete();
@@ -168,7 +168,7 @@ return new class extends Migration
             $table->text('notes')->nullable();
             $table->timestamp('created_at')->nullable();
             $table->timestamp('updated_at')->nullable();
-            $table->index(['chapters_manuscript_version_id_index', 'manuscript_version_id']);
+            $table->index('manuscript_version_id', 'chapters_manuscript_version_id_index');
             $table->foreign('manuscript_version_id')->references('id')->on('manuscript_versions')->cascadeOnDelete();
             $table->foreign('work_id')->references('id')->on('works')->cascadeOnDelete();
         });
@@ -192,7 +192,7 @@ return new class extends Migration
             $table->text('notes')->nullable();
             $table->timestamp('created_at')->nullable();
             $table->timestamp('updated_at')->nullable();
-            $table->index(['sources_work_id_index', 'work_id']);
+            $table->index('work_id', 'sources_work_id_index');
             $table->foreign('work_id')->references('id')->on('works')->cascadeOnDelete();
         });
 
@@ -259,7 +259,7 @@ return new class extends Migration
             $table->boolean('generated_final_content');
             $table->timestamp('created_at')->nullable();
             $table->timestamp('updated_at')->nullable();
-            $table->index(['prompts_work_id_index', 'work_id']);
+            $table->index('work_id', 'prompts_work_id_index');
             $table->foreign('work_id')->references('id')->on('works')->cascadeOnDelete();
             $table->foreign('ai_tool_id')->references('id')->on('ai_tools')->nullOnDelete();
             $table->foreign('task_id')->references('id')->on('ai_tasks')->nullOnDelete();
@@ -368,7 +368,7 @@ return new class extends Migration
             $table->timestamp('updated_at')->nullable();
             $table->text('notes')->nullable();
             $table->timestamp('created_at')->nullable();
-            $table->unique(['publications_asin_marketplace_unique', 'asin', 'marketplace_id']);
+            $table->unique(['asin', 'marketplace_id'], 'publications_asin_marketplace_unique');
             $table->foreign('work_id')->references('id')->on('works')->cascadeOnDelete();
             $table->foreign('work_language_id')->references('id')->on('work_languages')->cascadeOnDelete();
             $table->foreign('manuscript_version_id')->references('id')->on('manuscript_versions')->cascadeOnDelete();
@@ -483,7 +483,7 @@ return new class extends Migration
             $table->text('notes')->nullable();
             $table->timestamp('created_at')->nullable();
             $table->timestamp('updated_at')->nullable();
-            $table->unique(['royalty_unique', 'publication_id', 'year', 'month']);
+            $table->unique(['publication_id', 'year', 'month'], 'royalty_unique');
             $table->foreign('publication_id')->references('id')->on('publications')->cascadeOnDelete();
         });
 
@@ -872,7 +872,7 @@ return new class extends Migration
             $table->text('notes')->nullable();
             $table->timestamp('created_at')->nullable();
             $table->timestamp('updated_at')->nullable();
-            $table->unique(['import_batches_file_hash_unique', 'file_hash']);
+            $table->unique(['file_hash'], 'import_batches_file_hash_unique');
             $table->foreign('user_id')->references('id')->on('users')->cascadeOnDelete();
             $table->foreign('ai_tool_id')->references('id')->on('ai_tools')->nullOnDelete();
         });
@@ -1080,7 +1080,7 @@ return new class extends Migration
             $table->string('name', 255);
             $table->timestamp('created_at')->nullable();
             $table->timestamp('updated_at')->nullable();
-            $table->unique(['tags_name_unique', 'name']);
+            $table->unique(['name'], 'tags_name_unique');
         });
 
         $createIfMissing('taggables', function (Blueprint $table) {
@@ -1100,7 +1100,7 @@ return new class extends Migration
             $table->foreignId('loggable_id')->nullable();
             $table->json('properties')->nullable();
             $table->timestamp('created_at')->nullable();
-            $table->index(['activity_logs_user_id_index', 'user_id']);
+            $table->index('user_id', 'activity_logs_user_id_index');
             $table->foreign('user_id')->references('id')->on('users')->nullOnDelete();
         });
 
