@@ -2,11 +2,11 @@
 
 namespace App\Models;
 
+use App\Services\VersionManager;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Facades\Hash;
 
 class ManuscriptVersion extends Model
 {
@@ -45,47 +45,17 @@ class ManuscriptVersion extends Model
     {
         parent::boot();
 
-        static::creating(function ($version) {
-            $version->calculateCounts();
+        static::created(function ($version) {
+            $manager = app(VersionManager::class);
+            $manager->processVersion($version);
         });
 
-        static::updating(function ($version) {
-            if ($version->isDirty('html_content')) {
-                $version->calculateCounts();
+        static::updated(function ($version) {
+            if ($version->wasChanged('html_content')) {
+                $manager = app(VersionManager::class);
+                $manager->processVersion($version);
             }
         });
-    }
-
-    protected function calculateCounts(): void
-    {
-        if ($this->html_content) {
-            $this->word_count = $this->countWords($this->html_content);
-            $this->chapter_count = $this->countChapters($this->html_content);
-            $this->image_count = $this->countImages($this->html_content);
-            $this->file_hash = Hash::make($this->html_content);
-        }
-    }
-
-    protected function countWords(string $content): int
-    {
-        $text = strip_tags($content);
-        $text = preg_replace('/\s+/', '', $text);
-
-        return (int) str_word_count(trim($text));
-    }
-
-    protected function countChapters(string $content): int
-    {
-        preg_match_all('/<h[1-6][^>]*>.*?<\/h[1-6]>/is', $content, $matches);
-
-        return count($matches[0]);
-    }
-
-    protected function countImages(string $content): int
-    {
-        preg_match_all('/<img[^>]+src=["\']([^"\']+)["\'][^>]*>/i', $content, $matches);
-
-        return count($matches[1]);
     }
 
     public function work(): BelongsTo

@@ -30,6 +30,11 @@ class Chapter extends Model
         'end_position' => 'integer',
     ];
 
+    protected $casts = [
+        'start_position' => 'integer',
+        'end_position' => 'integer',
+    ];
+
     protected static function boot(): void
     {
         parent::boot();
