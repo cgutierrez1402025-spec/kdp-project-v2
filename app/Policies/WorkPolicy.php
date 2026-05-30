@@ -1,0 +1,37 @@
+<?php
+
+namespace App\Policies;
+
+use App\Models\User;
+use App\Models\Work;
+
+class WorkPolicy
+{
+    public function viewAny(User $user): bool
+    {
+        return $user->roles()->whereIn('name', ['admin', 'author', 'editor', 'reviewer'])->exists();
+    }
+
+    public function view(User $user, Work $work): bool
+    {
+        return $user->id === $work->user_id ||
+               $user->roles()->where('name', 'admin')->exists();
+    }
+
+    public function create(User $user): bool
+    {
+        return $user->roles()->whereIn('name', ['admin', 'author'])->exists();
+    }
+
+    public function update(User $user, Work $work): bool
+    {
+        return $user->id === $work->user_id ||
+               $user->roles()->where('name', 'admin')->exists();
+    }
+
+    public function delete(User $user, Work $work): bool
+    {
+        return $user->id === $work->user_id ||
+               $user->roles()->where('name', 'admin')->exists();
+    }
+}
